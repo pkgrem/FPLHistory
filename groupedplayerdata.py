@@ -12,17 +12,6 @@ response = requests.get(api_url)
 # List to store individual DataFrames
 dataframes = []
 
-# Columns to keep
-columns_to_keep = [
-    'assists', 'bonus', 'bps', 'clean_sheets', 'creativity', 'element',
-    'expected_assists', 'expected_goal_involvements', 'expected_goals',
-    'expected_goals_conceded', 'goals_conceded', 'goals_scored', 'ict_index',
-    'influence', 'minutes', 'own_goals', 'penalties_missed', 'penalties_saved',
-    'red_cards', 'saves', 'selected', 'starts', 'team_a_score', 'team_h_score',
-    'threat', 'total_points', 'transfers_in', 'transfers_out', 'value', 'yellow_cards',
-    'player'  # This is the additional column we added for player names
-]
-
 # Check if the request was successful
 if response.status_code == 200:
     # Parse the JSON response
@@ -48,8 +37,11 @@ if response.status_code == 200:
         # Read the CSV data directly into a DataFrame
         data = pd.read_csv(raw_file_url)
         
+        # Remove numbers and replace underscores with spaces in player name
+        player_name = " ".join(file_name.split('_')[:-1]).replace('_', ' ')
+        
         # Add a column for the player name
-        data['player'] = file_name
+        data['player'] = player_name
         
         # Add the 'Involved' column based on the 'minutes' column
         data['Involved'] = data['minutes'].apply(lambda x: 1 if x > 0 else 0)
@@ -83,8 +75,6 @@ if response.status_code == 200:
         'saves': 'sum',
         'selected': 'mean',
         'starts': 'sum',
-        'team_a_score': 'sum',
-        'team_h_score': 'sum',
         'threat': 'sum',
         'total_points': 'sum',
         'transfers_in': 'sum',
@@ -94,8 +84,20 @@ if response.status_code == 200:
         'Involved': 'sum'
     }).reset_index()
 
-    # Save the grouped data to a CSV file
-    grouped_data.to_csv('grouped_player_data.csv', index=False)
+    # Round the 'selected' field to 0 decimal places
+    grouped_data['selected'] = grouped_data['selected'].round(0)
+
+    # Create the 'Net Transfers' column
+    grouped_data['Net Transfers'] = grouped_data['transfers_in'] - grouped_data['transfers_out']
+
+    # Create the '90s completed' column
+    grouped_data['90s completed'] = grouped_data['minutes'] / 90
+
+    # Create the per 90 metrics
+    grouped_data['expected_assists_per90'] = grouped_data['expected_assists'] / grouped_data['90s completed']
+    grouped_data['expected_goal_involvements_per90'] = grouped_data['expected_goal_involvements'] / grouped_data['90s completed']
+    grouped_data['expected_goals_per90'] = grouped_data['expected_goals'] / grouped_data['90s completed']
+    grouped_data['expected_goals_conceded_per90'] = grouped_data['expected_goals_conceded'] / grouped_data['90s completed']
 
     # Convert the DataFrame to an HTML table
     html_table = grouped_data.to_html(index=False, classes="display", table_id="dataTable")
@@ -110,18 +112,33 @@ if response.status_code == 200:
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
         <script>
             $(document).ready( function () {{
-                $('#dataTable').DataTable();
+                var table = $('#dataTable').DataTable();
+                
+                // Custom filtering function for minutes
+                $.fn.dataTable.ext.search.push(
+                    function(settings, data, dataIndex) {{
+                        var minMinutes = parseInt($('#minMinutes').val(), 10);
+                        var minutes = parseFloat(data[8]) || 0; // minutes is in the 9th column (index 8)
+                        return isNaN(minMinutes) || minutes >= minMinutes;
+                    }}
+                );
+                
+                // Re-filter the table when the minimum minutes input changes
+                $('#minMinutes').keyup(function() {{
+                    table.draw();
+                }});
             }} );
         </script>
     </head>
     <body>
+        <label>Min Minutes: <input type="text" id="minMinutes"></label>
         {html_table}
     </body>
     </html>
     """
 
     # Save the HTML content to a file with UTF-8 encoding
-    with open('grouped_player_data.html', 'w', encoding='utf-8') as f:
+    with open('grouped_player_data_with_filter.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
 else:
     print("Failed to retrieve data")
