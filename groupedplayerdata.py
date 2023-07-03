@@ -53,6 +53,8 @@ if response.status_code == 200:
     combined_data = pd.concat(dataframes, ignore_index=True)
 
     # Group by 'player' and 'element' and aggregate
+    
+    # Group by 'player' and 'element' and aggregate
     grouped_data = combined_data.groupby(['player', 'element']).agg({
         'assists': 'sum',
         'bonus': 'sum',
@@ -79,10 +81,25 @@ if response.status_code == 200:
         'total_points': 'sum',
         'transfers_in': 'sum',
         'transfers_out': 'sum',
-        'value': 'sum',
         'yellow_cards': 'sum',
         'Involved': 'sum'
     }).reset_index()
+
+    # Calculate price_start and price_end separately
+    price_start = combined_data.groupby(['player', 'element'])['value'].first().reset_index(name='price_start')
+    price_end = combined_data.groupby(['player', 'element'])['value'].last().reset_index(name='price_end')
+
+    # Merge price_start and price_end back into grouped_data
+    grouped_data = pd.merge(grouped_data, price_start, on=['player', 'element'])
+    grouped_data = pd.merge(grouped_data, price_end, on=['player', 'element'])
+
+    # Calculate 'profit_or_loss'
+    grouped_data['profit_or_loss'] = (grouped_data['price_end'] - grouped_data['price_start']) / 10
+
+    # Format price_start, price_end, and profit_or_loss by dividing by 10 and appending '£' where appropriate
+    grouped_data['price_start'] = grouped_data['price_start'].apply(lambda x: f'£{x/10}')
+    grouped_data['price_end'] = grouped_data['price_end'].apply(lambda x: f'£{x/10}')
+    grouped_data['profit_or_loss'] = grouped_data['profit_or_loss'].apply(lambda x: f'£{x:.1f}')
 
     # Round the 'selected' field to 0 decimal places
     grouped_data['selected'] = grouped_data['selected'].round(0)
