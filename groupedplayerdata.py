@@ -140,5 +140,8 @@ if response.status_code == 200:
     # Save the HTML content to a file with UTF-8 encoding
     with open('grouped_player_data_with_filter.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
+
+    # Save the filtered data to a CSV file
+    grouped_data.to_csv('filtered_player_data.csv', index=False)
 else:
     print("Failed to retrieve data")
