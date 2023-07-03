@@ -99,6 +99,36 @@ if response.status_code == 200:
     grouped_data['expected_goals_per90'] = grouped_data['expected_goals'] / grouped_data['90s completed']
     grouped_data['expected_goals_conceded_per90'] = grouped_data['expected_goals_conceded'] / grouped_data['90s completed']
 
+    # Create the 'goals per 90' column
+    grouped_data['goals_per_90'] = grouped_data['goals_scored'] / grouped_data['90s completed']
+
+    # Create the 'goals conceded per 90' column
+    grouped_data['goals_conceded_per_90'] = grouped_data['goals_conceded'] / grouped_data['90s completed']
+
+    # Create the 'saves per 90' column
+    grouped_data['saves_per_90'] = grouped_data['saves'] / grouped_data['90s completed']
+
+    # Create the 'assists per 90' column
+    grouped_data['assists_per_90'] = grouped_data['assists'] / grouped_data['90s completed']
+
+    # Create the 'bonus points per 90' column
+    grouped_data['bonus_points_per_90'] = grouped_data['bonus'] / grouped_data['90s completed']
+
+    columns_to_replace_nan = [
+    'expected_assists_per90',
+    'expected_goal_involvements_per90',
+    'expected_goals_per90',
+    'expected_goals_conceded_per90',
+    'goals_per_90',
+    'goals_conceded_per_90',
+    'saves_per_90',
+    'assists_per_90',
+    'bonus_points_per_90'
+]
+
+    for column in columns_to_replace_nan:
+        grouped_data[column] = grouped_data[column].fillna(0)
+
     # Convert the DataFrame to an HTML table
     html_table = grouped_data.to_html(index=False, classes="display", table_id="dataTable")
 
